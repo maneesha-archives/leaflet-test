@@ -1,0 +1,195 @@
+<html>
+
+<head>    
+
+
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+<script src="district_geojson.js"></script>
+
+<style type="text/css">
+#map{
+    border:solid blue;
+    width: 1000px;
+    height: 1000px;
+
+}
+
+
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+.info h4 {
+    margin: 0 0 5px;
+    color: #777;
+}
+</style>
+
+
+</head>
+
+<body>
+
+This is a test map.
+
+<button id="change-gender">Change to Gender codes</button>
+<button id="change-party">Change to party codes</button>
+<div id = "map"></div>
+
+<script>
+
+//Initialize a map inside a div called map
+var map = L.map('map').setView([39.955, -75.1647], 11);
+
+//add a maplayer to map
+L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+    maxZoom: 18
+}).addTo(map);
+
+//initialize an info control
+var info = L.control();
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+// method that we will use to update the control based on feature properties passed
+info.update = function (props) {
+
+    this._div.innerHTML = '<h4>City Council</h4>' +  
+        //ternary 
+        (props ? 
+        
+        //if hovering on a district    
+
+         "District: " + props.dist_num + "<br>Name: " + props.councilperson + "<br>Party:" + props.party + "<br>Gender: " + props.gender
+
+        //if not hovering on a district
+
+        : 'Hover over a district'); 
+};
+
+//add info to map
+info.addTo(map);
+
+//merge the two data sets
+for (i=0; i<districts.features.length; i++) {
+    console.log("districts.features[i].properties ", typeof districts.features[i].properties);
+
+    console.log("districts.features.properties.dist_num ", districts.features[i].properties.dist_num);
+    for (j=0; j<test_data.features.length; j++) {
+        if (districts.features[i].properties.dist_num == test_data.features[j].dist_num) {
+            console.log("IN DISTRICTS", districts.features[i].properties.dist_num, "IN TEST DATA", test_data.features[j].dist_num);
+            districts.features[i].properties.party = test_data.features[j].party;
+            districts.features[i].properties.councilperson = test_data.features[j].councilperson;
+            districts.features[i].properties.gender = test_data.features[j].gender;
+        }
+    }
+
+    //districts.features[i].properties.anotherItem = "Whatever";
+    console.log('districts.features.properties.anotherItem', districts.features[i].properties.anotherItem);
+};
+
+var geojson;
+
+//set color palatte
+function getColor(d) {
+    return d == 'Democrat' ? 'blue':
+           d == 'Republican' ? 'red' : 
+           d == 'male' ? 'green' :
+           d == 'female' ? 'yellow' :
+              'pink';
+};
+
+
+//attach color palatte to category
+function style(feature, color) {
+    var fillColor = (!color) ? getColor(feature.properties.gender) : color;
+    return {
+        fillColor: fillColor,
+        weight: 2,
+        opacity: 1,
+        color: 'white',
+        dashArray: '6',
+        fillOpacity: 1.0
+    };
+};
+
+
+
+L.geoJson(districts).addTo(map);
+
+function highlightFeature(e) {
+    var layer = e.target;
+    //on hover change color from what was defined in function style(feature)
+    layer.setStyle({
+        weight: 4,
+        color: 'white',
+        dashArray: '',
+        //fillOpacity: 0.7
+    });
+
+    if (!L.Browser.ie && !L.Browser.opera) {
+        layer.bringToFront();
+    }
+
+     //on hover change infobox
+    info.update(layer.feature.properties);
+}
+
+
+//reset highlight when hovering out
+function resetHighlight(e) {
+    geojson.resetStyle(e.target);
+    info.update();
+}
+
+
+
+
+
+function onEachFeature(feature, layer) {
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+    });
+}
+
+var geojson = L.geoJson(districts, {
+    style: style,
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+//click to change color style to gender categories
+document.getElementById("change-gender")
+        .addEventListener('click', function () {
+            geojson.setStyle(function (f) {return style(f, getColor(f.properties.gender));
+          });
+       });
+
+//click to change color style to party categories
+document.getElementById("change-party")
+        .addEventListener('click', function () {
+            geojson.setStyle(function (f) {return style(f, getColor(f.properties.party));
+          });
+       });
+
+
+</script>
+
+</body>
+
+
+</html>
+
+
+
